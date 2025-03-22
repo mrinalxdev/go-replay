@@ -1,13 +1,14 @@
 package db
 
 import (
-    "bufio"
-    "os"
+	"bufio"
+	"fmt"
+	"os"
+	"sync"
 	"time"
-    "sync"
 )
 
-// DB represents the database
+
 type DB struct {
     store     map[string]string
     logFile   *os.File
@@ -15,7 +16,7 @@ type DB struct {
     mu        sync.RWMutex
 }
 
-// NewDB creates a new database instance
+
 func NewDB(logPath string) (*DB, error) {
     file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
     if err != nil {
@@ -58,7 +59,7 @@ func (db *DB) Set(key, value string) error {
 // Get retrieves a value by key
 func (db *DB) Get(key string) (string, bool) {
     db.mu.RLock()
-    defer db.mu.RUnlock() // This is correct for read operations
+    defer db.mu.RUnlock()
 
     value, exists := db.store[key]
     return value, exists
@@ -66,7 +67,7 @@ func (db *DB) Get(key string) (string, bool) {
 
 // Delete removes a key-value pair
 func (db *DB) Delete(key string) error {
-    db.mu.Lock() // Changed from RLock to Lock since we're modifying
+    db.mu.Lock()
     defer db.mu.Unlock()
 
     op := Operation{
@@ -81,6 +82,21 @@ func (db *DB) Delete(key string) error {
 
     delete(db.store, key)
     return nil
+}
+
+// List prints all key-value pairs in the store
+func (db *DB) List() {
+    db.mu.RLock()
+    defer db.mu.RUnlock()
+
+    if len(db.store) == 0 {
+        fmt.Println("Store is empty")
+        return
+    }
+
+    for key, value := range db.store {
+        fmt.Printf("%s: %s\n", key, value)
+    }
 }
 
 // Close cleans up resources
